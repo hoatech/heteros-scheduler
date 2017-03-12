@@ -36,9 +36,9 @@ public class SupervisorSlot implements Comparable<SupervisorSlot>{
         if (getClass() != obj.getClass())
             return false;
         SupervisorSlot ss = (SupervisorSlot)obj;
-        if(this.details == ss.details)
+        if(this.details.getHost() == ss.details.getHost())
             return true;
-        return true;
+        return false;
     }
     @Override
     public String toString(){

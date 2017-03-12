@@ -56,7 +56,7 @@ public class SchedulingMetricsCollectionHook implements ITaskHook {
     /**
      * The intervalSecs in which the metrics (the sendgraph) will be collected.
      */
-    public static final int DEFAULT_INTERVAL_SECS = 30;
+    public static final int DEFAULT_INTERVAL_SECS = 60;
 
     /**
      * The intervalSecs configured in this property will be used for counting (and resetting) the metrics collected

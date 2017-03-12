@@ -39,6 +39,7 @@ public class Stootils {
     public static final String schedule_zk_path  = "/stools/scheduler/schedule" ;  // where we will write the schedules to
     public static final String metis_binary = "/home/"+current_user+"/lib/metis/bin/gpmetis";
     private final static Logger LOG = LoggerFactory.getLogger(Stootils.class);
+    public static final float improvement_threshold = 1.1f;
     private static CuratorFramework zkClientSingleton;
 
     /**

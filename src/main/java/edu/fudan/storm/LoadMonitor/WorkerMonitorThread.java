@@ -27,6 +27,7 @@ public class WorkerMonitorThread extends Thread {
                 WorkerMonitor.getInstance().sampleStats();
                 WorkerMonitor.getInstance().storeStats();
             } catch (Exception e) {
+                System.out.println(e.getMessage());
                 e.printStackTrace();
             }
         }

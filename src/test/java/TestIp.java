@@ -10,13 +10,9 @@ import java.util.List;
 
 public class TestIp {
     public static void main(String[] args) throws UnknownHostException {
-//        String address = InetAddress.getLocalHost().getHostAddress();
-//        System.out.println("IP address is: "+address);
-//        int a=2;
-//        int b=3;
-//        System.out.println((float)b/a);
-        List<Integer> test = new ArrayList<>();
-//        test.set(3,1);
-        System.out.println(test);
+        String a=  " - Edgecut: 0, communication volume: 0.";
+        String[] a1 = a.split(",")[0].split(" ");
+        String a2 = a1[a1.length-1];
+        System.out.println(a2);
     }
 }

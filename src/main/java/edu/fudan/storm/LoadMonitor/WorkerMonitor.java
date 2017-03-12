@@ -105,7 +105,7 @@ public class WorkerMonitor {
         return total / (loadData.size() * timeWindowSlotLength);
     }
 
-    public void storeStats() throws Exception {
+    public void storeStats(){
 
         logger.debug("WorkerMonitor Snapshot");
         logger.debug("----------------------------------------");
@@ -136,19 +136,24 @@ public class WorkerMonitor {
             String taskLoad = String.valueOf(getLoad(Tid));
             task_load.put(taskId, taskLoad);
             logger.info("Topology: " + topologyId + " component: "+taskToComponentMap.get(threadToTaskMap.get(Tid).getBeginTask())+" Task: " + taskId + " Load: " + taskLoad);
+            logger.info("Debug flag ---------------------------------------------------------");
         }
-        String cpu_load_map = RedisUtil.getTaskCPULoadMap(topologyId);
-        jedisClient.hmset(cpu_load_map, task_load);
-        Iterator<String> iter = jedisClient.hkeys(cpu_load_map).iterator();
-        while (iter.hasNext()) {
-            String key = iter.next();
-            logger.debug(key + ":" + jedisClient.hmget(cpu_load_map, key));
+        try {
+            String cpu_load_map = RedisUtil.getTaskCPULoadMap(topologyId);
+            String message = jedisClient.hmset(cpu_load_map, task_load);
+            logger.info("Redis return value: " + message);
+            Iterator<String> iter = jedisClient.hkeys(cpu_load_map).iterator();
+            while (iter.hasNext()) {
+                String key = iter.next();
+                logger.info(key + ":" + jedisClient.hmget(cpu_load_map, key));
+            }
+            long totalCPUCyclesAvailable = CPUInfo.getInstance().getTotalSpeed();
+            int usage = (int) (((double) totalCPUCyclesPerSecond / totalCPUCyclesAvailable) * 100);
+            logger.debug("Total CPU cycles consumed per second: " + totalCPUCyclesPerSecond + ", Total available: " + totalCPUCyclesAvailable + ", Usage: " + usage + "%");
+        }catch (Exception e){
+            logger.error(e.getMessage());
+            e.printStackTrace();
         }
-        long totalCPUCyclesAvailable = CPUInfo.getInstance().getTotalSpeed();
-        int usage = (int) (((double) totalCPUCyclesPerSecond / totalCPUCyclesAvailable) * 100);
-        logger.debug("Total CPU cycles consumed per second: " + totalCPUCyclesPerSecond + ", Total available: " + totalCPUCyclesAvailable + ", Usage: " + usage + "%");
-
-        logger.debug("----------------------------------------");
     }
 
     private void notifyLoadStat(long threadId, long load) {

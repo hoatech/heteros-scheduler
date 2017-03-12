@@ -6,7 +6,7 @@
 
     <groupId>edu.fudan.storm.scheduler</groupId>
     <artifactId>heteros-scheduler</artifactId>
-    <version>1.1.5-SNAPSHOT</version>
+    <version>1.2.8-SNAPSHOT</version>
     <repositories>
         <repository>
             <id>nexus</id>
