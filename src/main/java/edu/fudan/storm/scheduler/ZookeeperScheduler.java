@@ -170,18 +170,35 @@ public class ZookeeperScheduler implements IScheduler {
             topologyId = topology.getId();
             topologyName = topology.getName();
             topologyPath = this.zkRootPath + "/" + topologyName;
-            LOG.info("Schedule topology "+topology.getName());
-
-            //query redis for the task load
-            Map<Integer, Long[]> taskLoadMap = new HashMap<>();
 
             //inter task traffic
             long[][] InterTaskTraffic;
             List<Long> edgeCut = new ArrayList<>();
+            LOG.info("Schedule topology "+topology.getName());
 
+            /*
+            query redis for the task load
+             */
+
+            //get task to component map
+            Map<Integer, String> taskToComponentMap = new HashMap<>();
+            String redis_task_to_component_map = RedisUtil.getTaskToComponentMap(topologyId);
+            for (String taskId : jedisClient.hkeys(redis_task_to_component_map)) {
+                Integer task = Integer.parseInt(taskId);
+                List<String> componentIds = jedisClient.hmget(redis_task_to_component_map, taskId);
+                String componentId = componentIds.get(0);
+                taskToComponentMap.put(task, componentId);
+            }
+
+            Map<String, Set<Long[]>> component_task_load = new HashMap<>();
+            Map<String, Long[]> component_load_avg = new HashMap<>();
+
+            Map<Integer, Long[]> taskLoadMap = new HashMap<>();
             String cpu_load_map = RedisUtil.getTaskCPULoadMap(topologyId);
             String gpu_load_map = RedisUtil.getTaskGPULoadMap(topologyId);
             for (String key : jedisClient.hkeys(cpu_load_map)) {
+                int taskId = Integer.parseInt(key);
+                String componentId = taskToComponentMap.get(taskId);
                 List<String> cpuLoad = jedisClient.hmget(cpu_load_map, key);
                 if (cpuLoad == null || cpuLoad.get(0) == null) {
                     cpuLoad = new ArrayList<>();
@@ -193,9 +210,36 @@ public class ZookeeperScheduler implements IScheduler {
                     gpuLoad = new ArrayList<>();
                     gpuLoad.add("1");
                 }
-                LOG.info("Task: " + key + " cpu load " + cpuLoad + " gpu load " + gpuLoad);
-                taskLoadMap.put(Integer.parseInt(key), new Long[]{Long.parseLong(cpuLoad.get(0)), Long.parseLong(gpuLoad.get(0))});
+                LOG.debug("Task: " + key + " cpu load " + cpuLoad + " gpu load " + gpuLoad);
+                Long[] load = new Long[]{Long.parseLong(cpuLoad.get(0)), Long.parseLong(gpuLoad.get(0))};
+                if(component_task_load.get(componentId)!=null)
+                    component_task_load.get(componentId).add(load);
+                else{
+                    Set<Long[]> loads = new HashSet<>();
+                    loads.add(load);
+                    component_task_load.put(componentId, loads);
+                }
             }
+            for(String component:component_task_load.keySet()){
+                Set<Long[]> loads = component_task_load.get(component);
+                Long[] load_all = new Long[2];
+                for(int i=0;i<load_all.length;i++)
+                    load_all[i]=0L;
+                for(Long[] load : loads){
+                    for(int i=0; i<load_all.length; i++){
+                        load_all[i]+=load[i];
+                    }
+                }
+                Long[] load_avg = new Long[]{load_all[0]/loads.size(), load_all[1]/loads.size()};
+                component_load_avg.put(component, load_avg);
+            }
+            for(Integer taskid :taskToComponentMap.keySet()){
+                taskLoadMap.put(taskid, component_load_avg.get(taskToComponentMap.get(taskid)));
+            }
+            for(int taskid: taskLoadMap.keySet()) {
+                LOG.info("Task load map task id->load " + taskid+"->"+Arrays.toString(taskLoadMap.get(taskid)));
+            }
+
             LOG.info("Topology "+topologyName+" load metrics: "+taskLoadMap);
             /*
               phase 1 task -> task group

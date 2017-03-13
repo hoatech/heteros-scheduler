@@ -41,13 +41,14 @@ public class WorkerMonitor {
 
     private List<TaskMonitor> taskMonitorList;
 
-    private Map<Integer, String> taskToComponentMap;
+    private Map<String, String> taskToComponentMap;
 
     private int timeWindowSlotCount;
 
     private int timeWindowSlotLength;
 
     private Jedis jedisClient;
+
 
     public synchronized static WorkerMonitor getInstance() {
         if (instance == null)
@@ -111,7 +112,6 @@ public class WorkerMonitor {
         logger.debug("----------------------------------------");
         logger.debug("Topology ID: " + topologyId);
         logger.debug("Worker Port: " + workerPort);
-
         logger.debug("Threads to Tasks association:");
 
         for (long threadId : threadToTaskMap.keySet()) {
@@ -129,23 +129,27 @@ public class WorkerMonitor {
             executor.setLoad(getLoad(threadId));
         }
 
+        //store task to component map to redis
+        String redis_task_to_component = RedisUtil.getTaskToComponentMap(topologyId);
+        jedisClient.hmset(redis_task_to_component, taskToComponentMap);
+
         //store load stats into redis
+        String redis_cpu_load_map = RedisUtil.getTaskCPULoadMap(topologyId);
         Map<String, String> task_load = new HashMap();
         for (Long Tid : loadStats.keySet()) {
             String taskId = String.valueOf(threadToTaskMap.get(Tid).getBeginTask());
             String taskLoad = String.valueOf(getLoad(Tid));
             task_load.put(taskId, taskLoad);
-            logger.info("Topology: " + topologyId + " component: "+taskToComponentMap.get(threadToTaskMap.get(Tid).getBeginTask())+" Task: " + taskId + " Load: " + taskLoad);
-            logger.info("Debug flag ---------------------------------------------------------");
+            logger.debug("Topology: " + topologyId + " component: "+taskToComponentMap.get(threadToTaskMap.get(Tid).getBeginTask())+" Task: " + taskId + " Load: " + taskLoad);
+            logger.debug("Debug flag ---------------------------------------------------------");
         }
         try {
-            String cpu_load_map = RedisUtil.getTaskCPULoadMap(topologyId);
-            String message = jedisClient.hmset(cpu_load_map, task_load);
+            String message = jedisClient.hmset(redis_cpu_load_map, task_load);
             logger.info("Redis return value: " + message);
-            Iterator<String> iter = jedisClient.hkeys(cpu_load_map).iterator();
+            Iterator<String> iter = jedisClient.hkeys(redis_cpu_load_map).iterator();
             while (iter.hasNext()) {
                 String key = iter.next();
-                logger.info(key + ":" + jedisClient.hmget(cpu_load_map, key));
+                logger.info(key + ":" + jedisClient.hmget(redis_cpu_load_map, key));
             }
             long totalCPUCyclesAvailable = CPUInfo.getInstance().getTotalSpeed();
             int usage = (int) (((double) totalCPUCyclesPerSecond / totalCPUCyclesAvailable) * 100);
@@ -178,7 +182,7 @@ public class WorkerMonitor {
     public void setContextInfo(TopologyContext context) {
         this.topologyId = context.getStormId();
         this.workerPort = context.getThisWorkerPort();
-        logger.debug("add task "+context.getThisTaskId()+" to component "+context.getThisComponentId());
-        taskToComponentMap.put(context.getThisTaskId(),context.getThisComponentId());
+        this.logger.debug("add task "+context.getThisTaskId()+" to component "+context.getThisComponentId());
+        this.taskToComponentMap.put(String.valueOf(context.getThisTaskId()),context.getThisComponentId());
     }
 }

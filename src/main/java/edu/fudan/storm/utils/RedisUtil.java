@@ -21,4 +21,8 @@ public class RedisUtil {
     public static String getTaskGPULoadMap(String topologyId){
         return topologyId+"_gpu_load";
     }
+    public static String getTaskToComponentMap(String topologyId){
+        return topologyId+"_task_to_component";
+    }
+
 }
