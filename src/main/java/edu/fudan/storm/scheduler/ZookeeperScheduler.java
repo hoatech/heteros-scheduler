@@ -497,13 +497,15 @@ public class ZookeeperScheduler implements IScheduler {
             LOG.info("Send graph of topology " + topologyName + " is: " + send_graph);
             Gson gson = new Gson();
             Map<String, Object> o = gson.fromJson(send_graph, Map.class);
-            List<Map<String, String>> nodes = (List<Map<String, String>>) o.get("nodes");
             List<Map<String, Object>> links = (List<Map<String, Object>>) o.get("links");
             //get and sort all task with metrics
-            for (Map task : nodes) {
-                int tmp;
-                tmp = Integer.parseInt((String) task.get("name"));
-                taskWithTrafficIds.add(tmp);
+            for (Map link : links) {
+                int sourceId = ((Double) link.get("source")).intValue();
+                int targetId = ((Double) link.get("target")).intValue();
+                if(!taskWithTrafficIds.contains(sourceId))
+                    taskWithTrafficIds.add(sourceId);
+                if(!taskWithTrafficIds.contains(targetId))
+                    taskWithTrafficIds.add(targetId);
             }
             Collections.sort(taskWithTrafficIds);
             LOG.info(taskWithTrafficIds.toString());
