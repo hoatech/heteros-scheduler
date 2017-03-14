@@ -135,6 +135,7 @@ public class ZookeeperScheduler implements IScheduler {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        this.jedisClient.flushDB();
     }
 
     @Override
@@ -375,21 +376,22 @@ public class ZookeeperScheduler implements IScheduler {
 
                     for (int i = 0; i < numWorkers; i++) {
                         Collections.sort(availableSupervisors);
-                        LOG.info("Sort available supervisor: " + availableSupervisors);
+                        LOG.debug("Sort available supervisor: " + availableSupervisors);
                         SupervisorSlot ss = availableSupervisors.get(availableSupervisors.size() - 1);
                         WorkerSlot ws = ss.avaiableSlots.remove(0);
                         ss.choosedSlots.add(ws);
-                        LOG.info("Choose supervisor: " + ss + " worker: " + ws.getPort());
+                        LOG.debug("Choose supervisor: " + ss + " worker: " + ws.getPort());
                         if (!choosedSupervisors.contains(ss))
                             choosedSupervisors.add(ss);
                     }
-                    LOG.info("Choosed supervisors: " + choosedSupervisors);
+                    LOG.debug("Choosed supervisors: " + choosedSupervisors);
                     List<Integer> partitionSize = new LinkedList<>();
                     for (SupervisorSlot ss : choosedSupervisors)
                         partitionSize.add(ss.choosedSlots.size());
                     try {
                         LOG.info("Call worker partition method");
                         List<List<Integer>> supervisorToWorkers = workerPartition(topologyName, InterTaskTraffic, taskToWorkerMap, numWorkers, partitionSize);
+                        LOG.info("Phase 2 partition result"+supervisorToWorkers);
                         for (SupervisorSlot ss : choosedSupervisors) {
                             if (supervisorToWorkers != null && supervisorToWorkers.size() > 0) {
                                 List<Integer> workers = supervisorToWorkers.remove(0);
@@ -488,6 +490,18 @@ public class ZookeeperScheduler implements IScheduler {
             trafficList.add(trafficMap);
         }
         LOG.info("Traffic list: "+trafficList);
+
+        if(edgeNumber==0){
+            int workerId=0;
+            LOG.info("Integer worker traffic is 0, assign task without METIS");
+            for(int partitionId=0; partitionId<partitionSize.size(); partitionId++){
+                for(int i=0;i<partitionSize.get(partitionId);i++){
+                    ret.get(partitionId).add(workerId);
+                    workerId++;
+                }
+            }
+            return ret;
+        }
         //write header of graph
         writer.write(numWorkers+" "+edgeNumber/2+" "+"011"+"\n");
         for(int i=0;i<numWorkers;i++){
